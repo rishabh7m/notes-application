@@ -76,7 +76,8 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 				"course_id" : course,
 				"sem_id" : sem,
 				"teacher" : teacher,
-				"location" : filePath
+				"location" : filePath,
+				"update": 1
 			};
 			commonCollection.insert(dbValue);
 			res.send('success');
@@ -88,33 +89,20 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 //	DOWNLOAD PDF FROM SERVER
 app.get('/api/notes/:id', function(req, res) {
 	var id = req.params.id;
-	var idQuery = 'ObjectId(" + id + ")';
-	var one = 'ObjectId("';
-	var two = one + id;
-	var three = two + '")'
-	//var _id = '_id';
-	var rish = 'rishabh';
-
-	var q1 = '{_id: ';
-	var q2 = q1 + three;
-	var q3 = q2 + '}'
-
 	var newid = new objectId(id);
+	var obj;
 
-	/*var updateValue = {};
-	updateValue[_id] = three;*/
-
-	/*commonCollection.find({"_id": three}, {location: 1, _id: 0}).toArray(function(err, results) {
-		if(!err) {
-			console.log(results);
-		}
-		else {
-			res.send("error");
-		}
-	});*/
 	commonCollection.findOne({_id: newid}, {location: 1, _id: 0}, function(err, doc) {
 		if(!err) {
 			console.log(doc);
+			//obj = JSON.parse(doc);
+			console.log("location: " + doc.location);
+			var file = fs.createReadStream(doc.location);
+			var stat = fs.statSync(doc.location);
+			res.setHeader('Content-Length', stat.size);
+			res.setHeader('Content-Type', 'application/pdf');
+			res.setHeader('Content-Disposition', 'attachment; filename=' + id + '.pdf');
+			file.pipe(res);
 		}
 		else {
 			console.log("error");
