@@ -110,4 +110,24 @@ app.get('/api/notes/:id', function(req, res) {
 	});
 });
 
+//	SEM WISE LIST
+app.get('/api/notes/sem/:sem', function(req, res) {
+	var semId = req.params.sem;
+	var semQuery = '"' + semId + '"';
+	commonCollection.find({sem_id: semId}, {
+		file_id: 1,
+		course_id: 1,
+		sem_id: 1,
+		teacher: 1
+	}).toArray(function(err, doc) {
+		if(!err) {
+			res.json(doc);
+		}
+		else {
+			console.log("error");
+			res.send("error");
+		}
+	})
+});
+
 app.listen(3000);
