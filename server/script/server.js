@@ -5,8 +5,9 @@ var multer = require('multer');
 var mongoClient = require('mongodb').MongoClient;
 var upload = multer({dest: '/home/rishabh/Notes/notes-application/server/data/common'});
 var objectId = require('mongodb').ObjectId;
+var jsonBody = require('body/json');
 
-var commonCollection;
+var commonCollection, user;
 
 //	SEMESTER PATHS
 var sem_1 = '/home/rishabh/Notes/notes-application/server/data/1';
@@ -25,6 +26,7 @@ mongoClient.connect("mongodb://localhost:27017/notes", function(err, db) {
 		console.log('Database Connected...');
 
 		commonCollection = db.collection('common');
+		user = db.collection('user');
 	}
 	else {
 		console.log('Connection Failed...');
@@ -68,7 +70,9 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 	filePath = semPath + '/' + course + '/' + sem + '_' + course + '_' + teacher + '.pdf';
 	fs.rename(oldPath, filePath, function(err) {
 		if(err) {
-			res.send('error...');
+			res.json({
+				"success": "false"
+			});
 		}
 		else {
 			dbValue = {
@@ -80,7 +84,9 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 				"update": 1
 			};
 			commonCollection.insert(dbValue);
-			res.send('success');
+			res.json({
+				"success": "true"
+			});
 		}
 	});
 });
@@ -127,6 +133,90 @@ app.get('/api/notes/sem/:sem', function(req, res) {
 			console.log("error");
 			res.send("error");
 		}
+	})
+});
+
+//	SIGN UP
+// Status = 0 i.e Email already exists
+// Status = 1 i.e UserName already exists
+// Status = 2 i.e Registered
+app.post('/api/notes/register', function(req, res) {
+	jsonBody(req, res, function(err, body) {
+		var rollNo = body.RollNo;
+		var firstName = body.FirstName;
+		var lastName = body.LastName;
+		var userName = body.UserName;
+		var email = body.Email;
+		var password = body.Password;
+
+		user.find({Email: email}, {Email: 1}).toArray(function(err, doc) {
+			if(!err) {
+				var length = doc.length;
+				if(length == 1) {
+					res.json({
+						"status": 0
+					});
+				}
+				else {
+					user.find({UserName: userName}, {UserName: 1}).toArray(function(err, doc) {
+						if(!err) {
+							var length = doc.length;
+							if(length == 1) {
+								res.json({
+									"status": 1
+								});
+							}
+							else {
+								dbValue = {
+									"RollNo": rollNo,
+									"FirstName": firstName,
+									"LastName": lastName,
+									"UserName": userName,
+									"AvatarUrl": "",
+									"Email": email,
+									"update": 1,
+									"Password": password
+								};
+								user.insert(dbValue);
+								res.json({
+									"status": 2,
+									"RollNo": rollNo,
+									"FirstName": firstName,
+									"LastName": lastName,
+									"UserName": userName,
+									"AvatarUrl": "",
+									"Email": email,
+								});
+							}
+						}
+					})
+				}
+			}
+		})
+	});
+});
+
+//	LOGIN
+app.post('/api/notes/login', function(req, res) {
+	jsonBody(req, res, function(req, body) {
+		var userName = body.UserName;
+		var password = body.Password;
+
+		user.find({UserName: userName, Password: password}).toArray(function(err, doc) {
+			if(!err) {
+				var length = doc.length;
+				if(length != 0) {
+					var jsonObject = doc[0];
+					jsonObject.Status = 1;
+					res.json(jsonObject);
+				}
+				else {
+					res.json({
+						"status": 0
+					});
+				}
+			}
+		})
 	})
 });
 
