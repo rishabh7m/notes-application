@@ -232,5 +232,4 @@ app.get('/api/notes/courses/:sem', function(req, res) {
 });
 
 console.log('server started');
-
 app.listen(3000);
