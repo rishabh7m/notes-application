@@ -7,7 +7,7 @@ var upload = multer({dest: '/home/rishabh/Notes/notes-application/server/data/co
 var objectId = require('mongodb').ObjectId;
 var jsonBody = require('body/json');
 
-var commonCollection, user;
+var commonCollection, user, course;
 
 //	SEMESTER PATHS
 var sem_1 = '/home/rishabh/Notes/notes-application/server/data/1';
@@ -27,6 +27,7 @@ mongoClient.connect("mongodb://localhost:27017/notes", function(err, db) {
 
 		commonCollection = db.collection('common');
 		user = db.collection('user');
+		course = db.collection('course');
 	}
 	else {
 		console.log('Connection Failed...');
@@ -219,5 +220,17 @@ app.post('/api/notes/login', function(req, res) {
 		})
 	})
 });
+
+//	SEM WISE SUBJECT LIST
+app.get('/api/notes/courses/:sem', function(req, res) {
+	var semId = req.params.sem;
+	course.find({sem: semId}, {code: 1, name: 1, sem: 1}).toArray(function(err, doc) {
+		if(!err) {
+			res.json(doc);
+		}
+	})
+});
+
+console.log('server started');
 
 app.listen(3000);
