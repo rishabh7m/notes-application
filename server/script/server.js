@@ -7,7 +7,7 @@ var upload = multer({dest: '/home/rishabh/Notes/notes-application/server/data/co
 var objectId = require('mongodb').ObjectId;
 var jsonBody = require('body/json');
 
-var commonCollection, user, course;
+var commonCollection, user, course, rating;
 
 //	SEMESTER PATHS
 var sem_1 = '/home/rishabh/Notes/notes-application/server/data/1';
@@ -28,6 +28,7 @@ mongoClient.connect("mongodb://localhost:27017/notes", function(err, db) {
 		commonCollection = db.collection('common');
 		user = db.collection('user');
 		course = db.collection('course');
+		ratingCollection = db.collection('rating');
 	}
 	else {
 		console.log('Connection Failed...');
@@ -230,6 +231,57 @@ app.get('/api/notes/courses/:sem', function(req, res) {
 		}
 	})
 });
+
+// COURSE WISE LIST
+app.get('/api/notes/courses/id/:course_code', function(req, res) {
+	var courseId = req.params.course_code;
+	commonCollection.find({course_id: courseId}, {course_id: 1, sem_id: 1, teacher: 1}).toArray(function(err, doc) {
+		if(!err) {
+			res.json(doc);
+		}
+	})
+});
+
+//	RATE NOTES
+app.post('/api/notes/rate', function(req, res) {
+	jsonBody(req, res, function(err, body) {
+		var userId = body.UserId;
+		var pdfId = body.PdfId;
+		var rating = body.Rating;
+		var userObjectId = objectId(userId);
+		var pdfObjectId = objectId(pdfId);
+
+		var dbValue = {
+			"UserId" : userId,
+			"PdfId" : pdfId,
+			"Rating" : rating
+		};
+
+		ratingCollection.update({
+			"UserId" : userId,
+			"PdfId" : pdfId,
+		}, {
+			"UserId" : userId,
+			"PdfId" : pdfId,
+			"Rating" : rating
+		}, {upsert: true, multi: false});
+		commonCollection.find({_id: pdfObjectId}, {total_review: 1, rating: 1}).toArray(function(err, doc) {
+			if(!err) {
+				var list = doc[0];
+				var totalReview = list.total_review;
+				var listRating = list.rating;
+
+				var oldRating = totalReview * listRating;
+				totalReview = totalReview + 1;
+				var newRating = (oldRating + rating) / totalReview;
+
+				commonCollection.update({_id: pdfObjectId}, {total_review: totalReview, rating: newRating}, 
+					{upsert: true, multi: false});
+				res.json({"status": "success"});
+			}
+		})
+	})
+})
 
 console.log('server started');
 app.listen(3000);
