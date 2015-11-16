@@ -6,8 +6,9 @@ var mongoClient = require('mongodb').MongoClient;
 var upload = multer({dest: '/home/rishabh/Notes/notes-application/server/data/common'});
 var objectId = require('mongodb').ObjectId;
 var jsonBody = require('body/json');
+var PDFImage = require("pdf-image").PDFImage;
 
-var commonCollection, user, course, rating;
+var commonCollection, user, course, rating, previewCollection;
 
 //	SEMESTER PATHS
 var sem_1 = '/home/rishabh/Notes/notes-application/server/data/1';
@@ -29,6 +30,7 @@ mongoClient.connect("mongodb://localhost:27017/notes", function(err, db) {
 		user = db.collection('user');
 		course = db.collection('course');
 		ratingCollection = db.collection('rating');
+		previewCollection = db.collection('preview');
 	}
 	else {
 		console.log('Connection Failed...');
@@ -237,7 +239,7 @@ app.get('/api/notes/courses/:sem', function(req, res) {
 // COURSE WISE LIST
 app.get('/api/notes/courses/id/:course_code', function(req, res) {
 	var courseId = req.params.course_code;
-	commonCollection.find({course_id: courseId}, {course_id: 1, sem_id: 1, teacher: 1}).toArray(function(err, doc) {
+	commonCollection.find({course_id: courseId}, {course_id: 1, sem_id: 1, teacher: 1, rating: 1}).toArray(function(err, doc) {
 		if(!err) {
 			res.json(doc);
 		}
@@ -287,7 +289,31 @@ app.post('/api/notes/rate', function(req, res) {
 			}
 		})
 	})
-})
+});
+
+// GET PREVIEW
+app.get('/api/notes/preview/:id', function(req, res) {
+	var id = req.params.id;
+	var newid = new objectId(id);
+	var obj;
+
+	previewCollection.findOne({_id: newid}, {Location: 1, _id: 0}, function(err, doc) {
+		if(!err) {
+			console.log(doc);
+			//obj = JSON.parse(doc);
+			console.log("location: " + doc.Location);
+			var file = fs.createReadStream(doc.Location);
+			var stat = fs.statSync(doc.Location);
+			res.setHeader('Content-Length', stat.size);
+			res.setHeader('Content-Type', 'image/png');
+			res.setHeader('Content-Disposition', 'attachment; filename=' + id + '.png');
+			file.pipe(res);
+		}
+		else {
+			console.log("error");
+		}
+	});
+});
 
 console.log('server started');
 app.listen(3000);
