@@ -83,7 +83,9 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 				"sem_id" : sem,
 				"teacher" : teacher,
 				"location" : filePath,
-				"update": 1
+				"update": 1,
+				"total_review" : 0,
+				"rating" : 0
 			};
 			commonCollection.insert(dbValue);
 			res.json({
@@ -248,35 +250,39 @@ app.post('/api/notes/rate', function(req, res) {
 		var userId = body.UserId;
 		var pdfId = body.PdfId;
 		var rating = body.Rating;
-		var userObjectId = objectId(userId);
-		var pdfObjectId = objectId(pdfId);
-
-		var dbValue = {
-			"UserId" : userId,
-			"PdfId" : pdfId,
-			"Rating" : rating
-		};
+		var userObjectId = new objectId(userId);
+		var pdfObjectId = new objectId("563fac2838efc3e814bdb2ec");
 
 		ratingCollection.update({
-			"UserId" : userId,
-			"PdfId" : pdfId,
+		    "UserId" : userId,
+		    "PdfId" : pdfId
 		}, {
-			"UserId" : userId,
-			"PdfId" : pdfId,
-			"Rating" : rating
-		}, {upsert: true, multi: false});
-		commonCollection.find({_id: pdfObjectId}, {total_review: 1, rating: 1}).toArray(function(err, doc) {
+		    $set: {
+		        "Rating": rating
+		    }
+		})
+
+		commonCollection.find({_id: pdfObjectId}, {"total_review": 1, "rating": 1}).toArray(function(err, doc) {
 			if(!err) {
 				var list = doc[0];
 				var totalReview = list.total_review;
+				//var totalReview = 1;
 				var listRating = list.rating;
+				//var listRating = 1;
 
 				var oldRating = totalReview * listRating;
 				totalReview = totalReview + 1;
 				var newRating = (oldRating + rating) / totalReview;
 
-				commonCollection.update({_id: pdfObjectId}, {total_review: totalReview, rating: newRating}, 
-					{upsert: true, multi: false});
+				commonCollection.update({
+				    "_id" : pdfObjectId
+				}, {
+				    $set: {
+				        "total_review": totalReview,
+				        "rating": newRating
+				    }
+				});
+
 				res.json({"status": "success"});
 			}
 		})
