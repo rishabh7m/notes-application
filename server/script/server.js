@@ -310,27 +310,49 @@ app.post('/api/notes/rate', function(req, res) {
 });
 
 // GET PREVIEW
-app.get('/api/notes/preview/:id', function(req, res) {
-	var id = req.params.id;
+app.get('/api/notes/preview/:pdf_id/:preview_no', function(req, res) {
+	var id = req.params.pdf_id;
+	var previewNo = req.params.preview_no;
 	var newid = new objectId(id);
 	var obj;
 
-	previewCollection.findOne({_id: newid}, {Location: 1, _id: 0}, function(err, doc) {
-		if(!err) {
-			console.log(doc);
-			//obj = JSON.parse(doc);
-			console.log("location: " + doc.Location);
-			var file = fs.createReadStream(doc.Location);
-			var stat = fs.statSync(doc.Location);
-			res.setHeader('Content-Length', stat.size);
-			res.setHeader('Content-Type', 'image/png');
-			res.setHeader('Content-Disposition', 'attachment; filename=' + id + '.png');
-			file.pipe(res);
-		}
-		else {
-			console.log("error");
-		}
-	});
+	if(previewNo == 1) {
+		commonCollection.findOne({_id: newid}, {preview_1: 1, _id: 0}, function(err, doc) {
+			if(!err) {
+				//obj = JSON.parse(doc);
+				console.log("location: " + doc.preview_1);
+				var file = fs.createReadStream(doc.preview_1);
+				var stat = fs.statSync(doc.preview_1);
+				res.setHeader('Content-Length', stat.size);
+				res.setHeader('Content-Type', 'image/png');
+				res.setHeader('Content-Disposition', 'attachment; filename=' + id + '_0.png');
+				file.pipe(res);
+			}
+			else {
+				console.log("error");
+			}
+		});
+	}
+	else if(previewNo == 2) {
+		commonCollection.findOne({_id: newid}, {preview_2: 1, _id: 0}, function(err, doc) {
+			if(!err) {
+				//obj = JSON.parse(doc);
+				console.log("location: " + doc.preview_2);
+				var file = fs.createReadStream(doc.preview_2);
+				var stat = fs.statSync(doc.preview_2);
+				res.setHeader('Content-Length', stat.size);
+				res.setHeader('Content-Type', 'image/png');
+				res.setHeader('Content-Disposition', 'attachment; filename=' + id + '_1.png');
+				file.pipe(res);
+			}
+			else {
+				console.log("error");
+			}
+		});
+	}
+	else {
+		res.status(404).send('Not Found');
+	}
 });
 
 console.log('server started');
