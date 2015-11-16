@@ -20,6 +20,9 @@ var sem_6 = '/home/rishabh/Notes/notes-application/server/data/6';
 var sem_7 = '/home/rishabh/Notes/notes-application/server/data/7';
 var sem_8 = '/home/rishabh/Notes/notes-application/server/data/8';
 
+//	PREVIEW PATH
+var previewPath = '/home/rishabh/Notes/notes-application/server/data/preview/';
+
 
 //	CONNECTING TO DATABASE
 mongoClient.connect("mongodb://localhost:27017/notes", function(err, db) {
@@ -79,6 +82,18 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 			});
 		}
 		else {
+			var pdfImage = new PDFImage(filePath);
+			var previewLocation_1 = previewPath + sem + '_' + course + '_' + teacher + '_0' + '.png';
+			var previewLocation_2 = previewPath + sem + '_' + course + '_' + teacher + '_1' + '.png';
+
+			pdfImage.convertPage(0).then(function (imagePath) {
+			  fs.rename(imagePath, previewLocation_1);
+			});
+
+			pdfImage.convertPage(1).then(function (imagePath) {
+			  fs.rename(imagePath, previewLocation_2);
+			});
+
 			dbValue = {
 				"file_id" : sem + '_' + course + '_' + teacher,
 				"course_id" : course,
@@ -87,7 +102,9 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 				"location" : filePath,
 				"update": 1,
 				"total_review" : 0,
-				"rating" : 0
+				"rating" : 0,
+				"preview_1" : previewLocation_1,
+				"preview_2" : previewLocation_2
 			};
 			commonCollection.insert(dbValue);
 			res.json({
@@ -208,7 +225,7 @@ app.post('/api/notes/login', function(req, res) {
 		var userName = body.UserName;
 		var password = body.Password;
 
-		user.find({UserName: userName, Password: password}).toArray(function(err, doc) {
+		user.find({UserName: userName, Password: password}, {Password: 0}).toArray(function(err, doc) {
 			if(!err) {
 				var length = doc.length;
 				if(length != 0) {
@@ -241,6 +258,7 @@ app.get('/api/notes/courses/id/:course_code', function(req, res) {
 	var courseId = req.params.course_code;
 	commonCollection.find({course_id: courseId}, {course_id: 1, sem_id: 1, teacher: 1, rating: 1}).toArray(function(err, doc) {
 		if(!err) {
+			var returnValue;
 			res.json(doc);
 		}
 	})
