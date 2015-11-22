@@ -7,8 +7,14 @@ var upload = multer({dest: '/home/rishabh/Notes/notes-application/server/data/co
 var objectId = require('mongodb').ObjectId;
 var jsonBody = require('body/json');
 var PDFImage = require("pdf-image").PDFImage;
+var randomstring = require("randomstring");
 
 var commonCollection, user, course, rating, previewCollection;
+
+// COPY JSON OBJECT
+function clone(a) {
+   return JSON.parse(JSON.stringify(a));
+}
 
 //	SEMESTER PATHS
 var sem_1 = '/home/rishabh/Notes/notes-application/server/data/1';
@@ -47,6 +53,8 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 	var course = req.params.course;
 	var teacher = req.params.teacher;
 	var oldPath = req.file.path;
+	var ranString = randomstring.generate();
+	var fileID = sem + '_' + course + '_' + teacher + '_' + ranString;
 	var semPath, filePath, dbValue;
 
 	if(sem == 1) {
@@ -74,7 +82,7 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 		semPath = sem_8;
 	}
 
-	filePath = semPath + '/' + course + '/' + sem + '_' + course + '_' + teacher + '.pdf';
+	filePath = semPath + '/' + course + '/' + fileID + '.pdf';
 	fs.rename(oldPath, filePath, function(err) {
 		if(err) {
 			res.json({
@@ -83,8 +91,8 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 		}
 		else {
 			var pdfImage = new PDFImage(filePath);
-			var previewLocation_1 = previewPath + sem + '_' + course + '_' + teacher + '_0' + '.png';
-			var previewLocation_2 = previewPath + sem + '_' + course + '_' + teacher + '_1' + '.png';
+			var previewLocation_1 = previewPath + fileID + '_0' + '.png';
+			var previewLocation_2 = previewPath + fileID + '_1' + '.png';
 
 			pdfImage.convertPage(0).then(function (imagePath) {
 			  fs.rename(imagePath, previewLocation_1);
@@ -95,7 +103,7 @@ app.post('/api/notes/upload/:sem/:course/:teacher',upload.single('pdf'), functio
 			});
 
 			dbValue = {
-				"file_id" : sem + '_' + course + '_' + teacher,
+				"file_id" : fileID,
 				"course_id" : course,
 				"sem_id" : sem,
 				"teacher" : teacher,
@@ -254,14 +262,40 @@ app.get('/api/notes/courses/:sem', function(req, res) {
 });
 
 // COURSE WISE LIST
-app.get('/api/notes/courses/id/:course_code', function(req, res) {
+app.get('/api/notes/courses/id/:course_code/:user_id', function(req, res) {
 	var courseId = req.params.course_code;
+	var userId = req.params.user_id;
+	var commonResult = [];
+
+	console.log("User Id: " + userId);
 	commonCollection.find({course_id: courseId}, {course_id: 1, sem_id: 1, teacher: 1, rating: 1}).toArray(function(err, doc) {
 		if(!err) {
-			var returnValue;
-			res.json(doc);
+			commonResult = doc;
+			/*for(var i=0; i<doc.length; i++) {
+				var object = doc[i];
+				var id = object._id;
+				console.log("Pdf Id: " + id);
+				ratingCollection.find({PdfId: id, UserId: userId}).toArray(function(err, doc_1) {
+					if(!err) {
+						if(doc_1.length == 0) {
+							object.UserRating = 0;
+							console.log(object);
+							returnArray.push(object);
+						}
+						else {
+							//console.log(doc_1[0]);
+						}
+					}
+					var ratingObject = doc_1[0];
+					var rating = ratingObject.Rating;
+					object.UserRating = rating;
+					returnArray[i] = object;
+				})
+			}*/
 		}
 	})
+	console.log(commonResult);
+	res.json(commonResult);
 });
 
 //	RATE NOTES
@@ -280,7 +314,7 @@ app.post('/api/notes/rate', function(req, res) {
 		    $set: {
 		        "Rating": rating
 		    }
-		})
+		}, {upsert: true});
 
 		commonCollection.find({_id: pdfObjectId}, {"total_review": 1, "rating": 1}).toArray(function(err, doc) {
 			if(!err) {
